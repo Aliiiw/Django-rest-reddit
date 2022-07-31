@@ -1,3 +1,4 @@
+import re
 from turtle import pos
 from django.forms import ValidationError
 from django.shortcuts import render
@@ -11,12 +12,26 @@ from .serializers import PostSerializers, VoteSerializers
 class PostList(generics.ListCreateAPIView):
     queryset = Post.objects.all()
     serializer_class = PostSerializers
-    
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     
     def perform_create(self, serializer):
         serializer.save(poster=self.request.user)
         
+        
+class PostRetrieveDestroy(generics.RetrieveDestroyAPIView):
+    queryset = Post.objects.all()
+    serializer_class = PostSerializers
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def delete(self, request, *args, **kwargs):
+        post = Post.objects.filter(pk=self.kwargs['pk'], poster=self.request.user)
+        if post.exists():
+            return self.destroy(request, *args, **kwargs)
+        else:
+            raise ValidationError("This is not your Post Dude!")
+        
+            
+
 
 class VoteCreate(generics.CreateAPIView, mixins.DestroyModelMixin):
     serializer_class = VoteSerializers
@@ -38,6 +53,3 @@ class VoteCreate(generics.CreateAPIView, mixins.DestroyModelMixin):
             return Response(status=status.HTTP_204_NO_CONTENT)
         else:
             raise ValidationError("You have never voted on this Post!")
-            
-        
-        
